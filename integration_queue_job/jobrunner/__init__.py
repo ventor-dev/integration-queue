@@ -14,9 +14,9 @@ from odoo.tools import config
 # main section and save them to a dict that will be passed to the job runner
 queue_job_config = {
     'channels': config.get('queue_job_channels', 'root:1'),
-    'scheme': config.get('queue_job_scheme', 'https'),
+    'scheme': config.get('queue_job_scheme', 'http'),
     'host': config.get('queue_job_host', 'localhost'),
-    'port': config.get('queue_job_port', 443),
+    'port': config.get('queue_job_port', 8069),
 }
 
 

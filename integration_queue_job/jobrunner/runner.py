@@ -306,10 +306,10 @@ class Database:
                 return False
             cr.execute(
                 "SELECT 1 FROM ir_module_module WHERE name=%s AND state=%s",
-                ("queue_job", "installed"),
+                ("integration_queue_job", "installed"),
             )
             if not cr.fetchone():
-                _logger.debug("queue_job is not installed for db %s", self.db_name)
+                _logger.debug("integration_queue_job is not installed for db %s", self.db_name)
                 return False
             cr.execute(
                 """SELECT COUNT(1)
