@@ -1,5 +1,5 @@
 ===============================
-Integration Job Queue (VentorTech)
+Integration Job Queue
 ===============================
 
 This module is a **fork of OCA’s `queue_job`**

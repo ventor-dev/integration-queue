@@ -9,6 +9,9 @@
 Built on top of Job Queue module from OCA (https://github.com/OCA/queue).
 ''',
     'version': '19.0.1.0.0',
+    'images': [
+        'static/description/images/banner.gif',
+    ],
     'author': 'VentorTech, Odoo Community Association (OCA), ACSONE SA/NV, Camptocamp',
     'website': 'https://github.com/ventor-dev/integration-queue',
     'license': 'LGPL-3',
