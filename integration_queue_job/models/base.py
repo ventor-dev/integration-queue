@@ -49,7 +49,7 @@ class Base(models.AbstractModel):
         See the documentation of :meth:``delayable`` for more details.
 
         :return: instance of a DelayableRecordset
-        :rtype: :class:`odoo.addons.queue_job.job.DelayableRecordset`
+        :rtype: :class:`odoo.addons.integration_queue_job.job.DelayableRecordset`
         """
         return DelayableRecordset(
             self,
@@ -109,7 +109,7 @@ class Base(models.AbstractModel):
             job1.delay()
 
         For more details on the graph dependencies, read the documentation of
-        :module:`~odoo.addons.queue_job.delay`.
+        :module:`~odoo.addons.integration_queue_job.delay`.
 
         :param priority: Priority of the job, 0 being the higher priority.
                          Default is 10.
@@ -130,7 +130,7 @@ class Base(models.AbstractModel):
                              argument (see :py:func:`..job.identity_exact`).
                              the new job will not be added.
         :return: instance of a Delayable
-        :rtype: :class:`odoo.addons.queue_job.job.Delayable`
+        :rtype: :class:`odoo.addons.integration_queue_job.job.Delayable`
         """
         return Delayable(
             self,
@@ -238,7 +238,7 @@ class Base(models.AbstractModel):
 
         NOTE: values will be stored only if they match stored fields on `queue.job`.
 
-        :param job: current queue_job.job.Job instance.
+        :param job: current integration_queue_job.job.Job instance.
         :return: dictionary for setting job values.
         """
         return {}

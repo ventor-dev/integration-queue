@@ -2,7 +2,7 @@
 Integration Job Queue
 ===============================
 
-This module is a **fork of OCA’s `queue_job`**
+This module is a **fork of OCA's `queue_job`**
 (https://github.com/OCA/queue/tree/18.0/queue_job).
 
 It provides a background job queue for Odoo, used to run asynchronous

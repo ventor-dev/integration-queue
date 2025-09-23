@@ -17,126 +17,6 @@ How does it work?
   is populated from the queue_job tables in all databases.
 * It does not run jobs itself, but asks Odoo to run them through an
   anonymous ``/queue_job/runjob`` HTTP request. [1]_
-
-How to use it?
---------------
-
-* Optionally adjust your configuration through environment variables:
-
-  - ``ODOO_QUEUE_JOB_CHANNELS=root:4`` (or any other channels
-    configuration), default ``root:1``.
-  - ``ODOO_QUEUE_JOB_SCHEME=https``, default ``http``.
-  - ``ODOO_QUEUE_JOB_HOST=load-balancer``, default ``http_interface``
-    or ``localhost`` if unset.
-  - ``ODOO_QUEUE_JOB_PORT=443``, default ``http_port`` or 8069 if unset.
-  - ``ODOO_QUEUE_JOB_HTTP_AUTH_USER=jobrunner``, default empty.
-  - ``ODOO_QUEUE_JOB_HTTP_AUTH_PASSWORD=s3cr3t``, default empty.
-  - ``ODOO_QUEUE_JOB_JOBRUNNER_DB_HOST=master-db``, default ``db_host``
-    or ``False`` if unset.
-  - ``ODOO_QUEUE_JOB_JOBRUNNER_DB_PORT=5432``, default ``db_port``
-    or ``False`` if unset.
-  - ``ODOO_QUEUE_JOB_JOBRUNNER_DB_USER=userdb``, default ``db_user``
-    or ``False`` if unset.
-  - ``ODOO_QUEUE_JOB_JOBRUNNER_DB_PASSWORD=passdb``, default ``db_password``
-    or ``False`` if unset.
-
-* Alternatively, configure the channels through the Odoo configuration
-  file, like:
-
-.. code-block:: ini
-
-  [queue_job]
-  channels = root:4
-  scheme = https
-  host = load-balancer
-  port = 443
-  http_auth_user = jobrunner
-  http_auth_password = s3cr3t
-  jobrunner_db_host = master-db
-  jobrunner_db_port = 5432
-  jobrunner_db_user = userdb
-  jobrunner_db_password = passdb
-
-* Or, if using ``anybox.recipe.odoo``, add this to your buildout configuration:
-
-.. code-block:: ini
-
-  [odoo]
-  recipe = anybox.recipe.odoo
-  (...)
-  queue_job.channels = root:4
-  queue_job.scheme = https
-  queue_job.host = load-balancer
-  queue_job.port = 443
-  queue_job.http_auth_user = jobrunner
-  queue_job.http_auth_password = s3cr3t
-
-* Start Odoo with ``--load=web,web_kanban,queue_job``
-  and ``--workers`` greater than 1 [2]_, or set the ``server_wide_modules``
-  option in The Odoo configuration file:
-
-.. code-block:: ini
-
-  [options]
-  (...)
-  workers = 4
-  server_wide_modules = web,web_kanban,queue_job
-  (...)
-
-* Or, if using ``anybox.recipe.odoo``:
-
-.. code-block:: ini
-
-  [odoo]
-  recipe = anybox.recipe.odoo
-  (...)
-  options.workers = 4
-  options.server_wide_modules = web,web_kanban,queue_job
-
-* Confirm the runner is starting correctly by checking the odoo log file:
-
-.. code-block:: none
-
-  ...INFO...queue_job.jobrunner.runner: starting
-  ...INFO...queue_job.jobrunner.runner: initializing database connections
-  ...INFO...queue_job.jobrunner.runner: queue job runner ready for db <dbname>
-  ...INFO...queue_job.jobrunner.runner: database connections ready
-
-* Create jobs (eg using base_import_async) and observe they
-  start immediately and in parallel.
-
-* Tip: to enable debug logging for the queue job, use
-  ``--log-handler=odoo.addons.queue_job:DEBUG``
-
-Caveat
-------
-
-* After creating a new database or installing queue_job on an
-  existing database, Odoo must be restarted for the runner to detect it.
-
-* When Odoo shuts down normally, it waits for running jobs to finish.
-  However, when the Odoo server crashes or is otherwise force-stopped,
-  running jobs are interrupted while the runner has no chance to know
-  they have been aborted. In such situations, jobs may remain in
-  ``started`` or ``enqueued`` state after the Odoo server is halted.
-  Since the runner has no way to know if they are actually running or
-  not, and does not know for sure if it is safe to restart the jobs,
-  it does not attempt to restart them automatically. Such stale jobs
-  therefore fill the running queue and prevent other jobs to start.
-  You must therefore requeue them manually, either from the Jobs view,
-  or by running the following SQL statement *before starting Odoo*:
-
-.. code-block:: sql
-
-  update queue_job set state='pending' where state in ('started', 'enqueued')
-
-.. rubric:: Footnotes
-
-.. [1] From a security standpoint, it is safe to have an anonymous HTTP
-       request because this request only accepts to run jobs that are
-       enqueued.
-.. [2] It works with the threaded Odoo server too, although this way
-       of running Odoo is obviously not for production purposes.
 """
 
 import datetime
@@ -415,7 +295,7 @@ class QueueJobRunner:
 
     def get_db_names(self):
         if config["db_name"]:
-            db_names = config["db_name"].split(",")
+            db_names = config["db_name"]
         else:
             db_names = odoo.service.db.list_dbs(True)
         return db_names
@@ -530,7 +410,7 @@ class QueueJobRunner:
             try:
                 _logger.debug("initializing database connections")
                 # TODO: how to detect new databases or databases
-                #       on which queue_job is installed after server start?
+                #       on which integration_queue_job is installed after server start?
                 self.initialize_databases()
                 _logger.info("database connections ready")
                 # inner loop does the normal processing

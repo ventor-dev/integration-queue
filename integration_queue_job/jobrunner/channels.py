@@ -337,7 +337,7 @@ class ChannelQueue:
 class Channel:
     """A channel for jobs, with a maximum capacity.
 
-    When jobs are created by queue_job modules, they may be associated
+    When jobs are created by integration_queue_job modules, they may be associated
     to a job channel. Jobs with no channel are inserted into the root channel.
 
     Job channels are joined in a hierarchy down to the root channel.
@@ -516,7 +516,7 @@ class Channel:
         :param now: the current datetime in seconds
 
         :return: iterator of
-                 :class:`odoo.addons.queue_job.jobrunner.ChannelJob`
+                 :class:`odoo.addons.integration_queue_job.jobrunner.ChannelJob`
         """
         # enqueue jobs of children channels
         for child in self.children.values():

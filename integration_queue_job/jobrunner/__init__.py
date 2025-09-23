@@ -121,7 +121,7 @@ def prefork__init__(server, app):
 def prefork_process_spawn(server):
     orig_prefork_process_spawn(server)
     if not hasattr(server, "jobrunner"):
-        # if 'queue_job' is not in server wide modules, PreforkServer is
+        # if 'integration_queue_job' is not in server wide modules, PreforkServer is
         # not initialized with a 'jobrunner' attribute, skip this
         return
     if not server.jobrunner and _is_runner_enabled():
@@ -131,7 +131,7 @@ def prefork_process_spawn(server):
 def prefork_worker_pop(server, pid):
     res = orig_prefork_worker_pop(server, pid)
     if not hasattr(server, "jobrunner"):
-        # if 'queue_job' is not in server wide modules, PreforkServer is
+        # if 'integration_queue_job' is not in server wide modules, PreforkServer is
         # not initialized with a 'jobrunner' attribute, skip this
         return res
     if pid in server.jobrunner:

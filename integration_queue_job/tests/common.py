@@ -11,10 +11,10 @@ from unittest import TestCase, mock
 from odoo.tests.case import TestCase as _TestCase
 from odoo.tests.common import MetaCase
 
-from odoo.addons.queue_job.delay import Graph
+from odoo.addons.integration_queue_job.delay import Graph
 
 # pylint: disable=odoo-addons-relative-import
-from odoo.addons.queue_job.job import Job
+from odoo.addons.integration_queue_job.job import Job
 
 
 @contextmanager
@@ -94,7 +94,7 @@ def trap_jobs():
             jobs_tester.perform_enqueued_jobs()
     """
     with mock.patch(
-        "odoo.addons.queue_job.delay.Job",
+        "odoo.addons.integration_queue_job.delay.Job",
         name="Job Class",
         auto_spec=True,
         unsafe=True,
@@ -404,7 +404,7 @@ def mock_with_delay():  # pylint: disable=E501
 
     """
     with mock.patch(
-        "odoo.addons.queue_job.models.base.DelayableRecordset",
+        "odoo.addons.integration_queue_job.models.base.DelayableRecordset",
         name="DelayableRecordset",
         spec=True,
     ) as delayable_cls:
@@ -454,7 +454,7 @@ def load_doctests(module):
 
         for idx, test in enumerate(doctest.DocTestSuite(module)):
             odoo_test = OdooDocTestCase(test, seq=idx)
-            odoo_test.test_tags = {"standard", "at_install", "queue_job", "doctest"}
+            odoo_test.test_tags = {"standard", "at_install", "integration_queue_job", "doctest"}
             tests.addTest(odoo_test)
 
         return tests

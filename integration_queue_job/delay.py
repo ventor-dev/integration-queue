@@ -20,7 +20,7 @@ def group(*delayables):
     A job or a group of jobs depending on a group can be executed only after
     all the jobs of the group are done.
 
-    Shortcut to :class:`~odoo.addons.queue_job.delay.DelayableGroup`.
+    Shortcut to :class:`~odoo.addons.integration_queue_job.delay.DelayableGroup`.
 
     Example::
 
@@ -39,7 +39,7 @@ def chain(*delayables):
     A job or a group of jobs depending on a group can be executed only after
     the last job of the chain is done.
 
-    Shortcut to :class:`~odoo.addons.queue_job.delay.DelayableChain`.
+    Shortcut to :class:`~odoo.addons.integration_queue_job.delay.DelayableChain`.
 
     Example::
 
@@ -215,7 +215,7 @@ class DelayableGraph(Graph):
         """Used for tests to run tests directly instead of storing them
 
         In tests, prefer to use
-        :func:`odoo.addons.queue_job.tests.common.trap_jobs`.
+        :func:`odoo.addons.integration_queue_job.tests.common.trap_jobs`.
         """
         envs = {vertex.recordset.env for vertex in vertices}
         for env in envs:
@@ -412,7 +412,7 @@ class Delayable:
     :class:`~DelayableGroup` or :class:`~DelayableChain` objects.
 
     This class will generally not be used directly, it is used internally
-    by :meth:`~odoo.addons.queue_job.models.base.Base.delayable`. Look
+    by :meth:`~odoo.addons.integration_queue_job.models.base.Base.delayable`. Look
     in the base model for more details.
 
     Delayables can be connected to other Delayable, DelayableChain or
@@ -618,7 +618,7 @@ class DelayableRecordset:
     the passed arguments.
 
     This class will generally not be used directly, it is used internally
-    by :meth:`~odoo.addons.queue_job.models.base.Base.with_delay`
+    by :meth:`~odoo.addons.integration_queue_job.models.base.Base.with_delay`
     """
 
     __slots__ = ("delayable",)

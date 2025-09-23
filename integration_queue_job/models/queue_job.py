@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timedelta
 
 from odoo import _, api, exceptions, fields, models
-from odoo.osv import expression
+from odoo.fields import Domain
 from odoo.tools import config, html_escape
 
 from odoo.addons.base_sparse_field.models.fields import Serialized
@@ -289,7 +289,7 @@ class QueueJob(models.Model):
         jobs = self.env["queue.job"].search([("graph_uuid", "=", self.graph_uuid)])
 
         action = self.env["ir.actions.act_window"]._for_xml_id(
-            "queue_job.action_queue_job"
+            "integration_queue_job.action_queue_job"
         )
         action.update(
             {
@@ -353,7 +353,7 @@ class QueueJob(models.Model):
 
     def _subscribe_users_domain(self):
         """Subscribe all users having the 'Queue Job Manager' group"""
-        group = self.env.ref("queue_job.group_queue_job_manager")
+        group = self.env.ref("integration_queue_job.group_queue_job_manager")
         if not group:
             return None
         companies = self.mapped("company_id")
@@ -449,7 +449,7 @@ class QueueJob(models.Model):
             raise exceptions.ValidationError(
                 _("If both parameters are 0, ALL jobs will be requeued!")
             )
-        return expression.OR(domain)
+        return Domain.OR(domain)
 
     def _get_stuck_jobs_to_requeue(self, enqueued_delta, started_delta):
         job_model = self.env["queue.job"]

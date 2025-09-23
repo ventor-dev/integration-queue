@@ -7,7 +7,7 @@ from unittest import mock
 
 from odoo.tests import common
 
-from odoo.addons.queue_job.delay import Delayable, DelayableGraph
+from odoo.addons.integration_queue_job.delay import Delayable, DelayableGraph
 
 
 class TestDelayable(common.BaseCase):
@@ -17,7 +17,7 @@ class TestDelayable(common.BaseCase):
 
     def test_delayable_set(self):
         # Use gc for garbage collection and use assertLogs to suppress WARNING
-        with self.assertLogs("odoo.addons.queue_job.delay", level=logging.WARNING):
+        with self.assertLogs("odoo.addons.integration_queue_job.delay", level=logging.WARNING):
             dl = Delayable(self.recordset)
             dl.set(priority=15)
             self.assertEqual(dl.priority, 15)
@@ -29,7 +29,7 @@ class TestDelayable(common.BaseCase):
 
     def test_delayable_set_unknown(self):
         # Use gc for garbage collection and use assertLogs to suppress WARNING
-        with self.assertLogs("odoo.addons.queue_job.delay", level=logging.WARNING):
+        with self.assertLogs("odoo.addons.integration_queue_job.delay", level=logging.WARNING):
             dl = Delayable(self.recordset)
             with self.assertRaises(ValueError):
                 dl.set(foo=15)
@@ -67,7 +67,7 @@ class TestDelayable(common.BaseCase):
 
     def test_graph_connect(self):
         # Use gc for garbage collection and use assertLogs to suppress WARNING
-        with self.assertLogs("odoo.addons.queue_job.delay", level=logging.WARNING):
+        with self.assertLogs("odoo.addons.integration_queue_job.delay", level=logging.WARNING):
             node_tail = Delayable(self.recordset)
             node_tail2 = Delayable(self.recordset)
             node_middle = Delayable(self.recordset)

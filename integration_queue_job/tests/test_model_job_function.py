@@ -29,7 +29,7 @@ class TestJobFunction(common.TransactionCase):
 
     def test_function_job_config(self):
         channel = self.env["queue.job.channel"].create(
-            {"name": "foo", "parent_id": self.env.ref("queue_job.channel_root").id}
+            {"name": "foo", "parent_id": self.env.ref("integration_queue_job.channel_root").id}
         )
         job_function = self.env["queue.job.function"].create(
             {

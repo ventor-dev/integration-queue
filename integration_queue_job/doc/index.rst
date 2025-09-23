@@ -40,6 +40,10 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
+
+* 1.0.1 (2025-09-23)
+    - Small fixes and improvements.
+
 * 1.0.0 (2025-09-16)
     - Initial release (forked from OCA/queue, cleaned up for VentorTech connectors).
 

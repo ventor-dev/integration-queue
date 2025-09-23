@@ -4,7 +4,7 @@
 
 from odoo.tests import common
 
-from odoo.addons.queue_job.delay import Delayable
+from odoo.addons.integration_queue_job.delay import Delayable
 
 
 class TestDelayableSplit(common.BaseCase):

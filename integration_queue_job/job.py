@@ -52,7 +52,7 @@ def identity_exact(job_):
 
     .. python::
 
-        from odoo.addons.queue_job.job import identity_exact
+        from odoo.addons.integration_queue_job.job import identity_exact
 
         # [...]
             delayable = self.with_delay(identity_key=identity_exact)
