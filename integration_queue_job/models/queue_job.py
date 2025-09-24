@@ -426,7 +426,7 @@ class QueueJob(models.Model):
 
     def _get_stuck_jobs_domain(self, queue_dl, started_dl):
         domain = []
-        now = fields.datetime.now()
+        now = fields.Datetime.now()
         if queue_dl:
             queue_dl = now - timedelta(minutes=queue_dl)
             domain.append(
