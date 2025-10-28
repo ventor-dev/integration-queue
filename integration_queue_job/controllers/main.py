@@ -132,10 +132,18 @@ class RunJobController(http.Controller):
             return ""
 
         except (FailedJobError, Exception) as orig_exception:
+            try:
+                # Call rollback() to clear the failed transaction
+                env.cr.rollback()
+            except Exception as rollback_err:
+                # Log rollback failure for debugging but continue execution
+                _logger.error('Failed to rollback transaction for job %s: %s', job_uuid, str(rollback_err))
+
             buff = StringIO()
             traceback.print_exc(file=buff)
             traceback_txt = buff.getvalue()
             _logger.error(traceback_txt)
+
             job.env.clear()
             with Registry(job.env.cr.dbname).cursor() as new_cr:
                 job.env = job.env(cr=new_cr)

@@ -41,6 +41,9 @@ You can postpone method calls to be executed asynchronously:
 Release Notes
 -------------
 
+* 1.0.2 (2025-10-28)
+    - Fixed database lock issues.
+
 * 1.0.1 (2025-09-23)
     - Small fixes and improvements.
 
