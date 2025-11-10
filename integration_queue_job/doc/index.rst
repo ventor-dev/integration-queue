@@ -40,6 +40,8 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
+* 1.0.3 (2025-11-10)
+    - Fixed create method to handle empty vals_list (Odoo tests compatibility).
 
 * 1.0.2 (2025-10-28)
     - Fixed database lock issues.
