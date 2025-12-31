@@ -12,7 +12,7 @@
                         class="oe_highlight"
                         string="Requeue Job"
                         type="object"
-                        groups="group_queue_job_manager"
+                        groups="integration_queue_job.group_queue_job_manager"
                     />
                     <button
                         name="button_done"
@@ -20,7 +20,7 @@
                         class="oe_highlight"
                         string="Set to 'Done'"
                         type="object"
-                        groups="group_queue_job_manager"
+                        groups="integration_queue_job.group_queue_job_manager"
                     />
                     <button
                         name="button_cancelled"
@@ -28,7 +28,7 @@
                         class="oe_highlight"
                         string="Cancel job"
                         type="object"
-                        groups="group_queue_job_manager"
+                        groups="integration_queue_job.group_queue_job_manager"
                     />
                     <button name="open_related_action" string="Related" type="object" />
                     <field

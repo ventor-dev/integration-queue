@@ -15,7 +15,7 @@ from odoo.addons.integration_queue_job.fields import JobDecoder, JobEncoder
 
 class TestJson(common.TransactionCase):
     def test_encoder_recordset(self):
-        demo_user = self.env.ref("base.user_demo")
+        demo_user = self.env.ref("base.user_admin")
         context = demo_user.context_get()
         partner = self.env(user=demo_user, context=context).ref("base.main_partner")
         value = partner
@@ -33,7 +33,7 @@ class TestJson(common.TransactionCase):
         self.assertEqual(json.loads(value_json), expected)
 
     def test_encoder_recordset_list(self):
-        demo_user = self.env.ref("base.user_demo")
+        demo_user = self.env.ref("base.user_admin")
         context = demo_user.context_get()
         partner = self.env(user=demo_user, context=context).ref("base.main_partner")
         value = ["a", 1, partner]
@@ -55,7 +55,7 @@ class TestJson(common.TransactionCase):
         self.assertEqual(json.loads(value_json), expected)
 
     def test_decoder_recordset(self):
-        demo_user = self.env.ref("base.user_demo")
+        demo_user = self.env.ref("base.user_admin")
         context = demo_user.context_get()
         partner = self.env(user=demo_user).ref("base.main_partner")
 
@@ -76,7 +76,7 @@ class TestJson(common.TransactionCase):
         self.assertEqual(demo_user, expected.env.user)
 
     def test_decoder_recordset_list(self):
-        demo_user = self.env.ref("base.user_demo")
+        demo_user = self.env.ref("base.user_admin")
         context = demo_user.context_get()
         partner = self.env(user=demo_user).ref("base.main_partner")
         value_json = json.dumps(
