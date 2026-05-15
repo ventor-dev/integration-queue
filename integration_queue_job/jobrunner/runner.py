@@ -98,21 +98,54 @@ def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
         connection_info = _connection_info_for(db_name)
         conn = psycopg2.connect(**connection_info)
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        with closing(conn.cursor()) as cr:
-            cr.execute(
-                "UPDATE queue_job SET state=%s, "
-                "date_enqueued=NULL, date_started=NULL "
-                "WHERE uuid=%s and state=%s "
-                "RETURNING uuid",
-                (PENDING, job_uuid, ENQUEUED),
-            )
-            if cr.fetchone():
-                _logger.warning(
-                    "state of job %s was reset from %s to %s",
-                    job_uuid,
-                    ENQUEUED,
-                    PENDING,
+        try:
+            with closing(conn.cursor()) as cr:
+                cr.execute(
+                    "UPDATE queue_job SET state=%s, "
+                    "date_enqueued=NULL, date_started=NULL "
+                    "WHERE uuid=%s and state=%s "
+                    "RETURNING uuid",
+                    (PENDING, job_uuid, ENQUEUED),
                 )
+                if cr.fetchone():
+                    _logger.warning(
+                        "state of job %s was reset from %s to %s",
+                        job_uuid,
+                        ENQUEUED,
+                        PENDING,
+                    )
+        finally:
+            conn.close()
+
+    def set_job_pending_with_eta(delay):
+        connection_info = _connection_info_for(db_name)
+        conn = psycopg2.connect(**connection_info)
+        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        try:
+            with closing(conn.cursor()) as cr:
+                cr.execute(
+                    """
+                    UPDATE queue_job
+                    SET state=%s,
+                    date_enqueued=NULL,
+                    date_started=NULL,
+                    eta=(now() at time zone 'utc') + (%s || ' seconds')::interval
+                    WHERE uuid=%s
+                    AND state=%s
+                    RETURNING uuid
+                    """,
+                    (PENDING, delay, job_uuid, ENQUEUED),
+                )
+                if cr.fetchone():
+                    _logger.warning(
+                        "state of job %s was reset from %s to %s with eta in %s seconds",
+                        job_uuid,
+                        ENQUEUED,
+                        PENDING,
+                        delay,
+                    )
+        finally:
+            conn.close()
 
     # TODO: better way to HTTP GET asynchronously (grequest, ...)?
     #       if this was python3 I would be doing this with
@@ -132,6 +165,24 @@ def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
             # for codes between 500 and 600
             response.raise_for_status()
         except requests.Timeout:
+            set_job_pending()
+        except requests.exceptions.HTTPError as err:
+            response = err.response
+            if response is not None and response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
+                delay = int(retry_after) if retry_after and retry_after.isdigit() else 60
+
+                _logger.warning(
+                    "rate limited while asking Odoo to run job %s on db %s; "
+                    "postponing retry for %s seconds",
+                    job_uuid,
+                    db_name,
+                    delay,
+                )
+                set_job_pending_with_eta(delay)
+                return
+
+            _logger.exception("exception in GET %s", url)
             set_job_pending()
         except Exception:
             _logger.exception("exception in GET %s", url)
