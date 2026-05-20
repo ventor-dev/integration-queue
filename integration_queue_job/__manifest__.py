@@ -32,6 +32,8 @@ Built on top of Job Queue module from OCA (https://github.com/OCA/queue).
     'installable': True,
     'application': False,
     'maintainers': ['ventor-dev'],
+    'pre_init_hook': 'pre_init_hook',
     'post_init_hook': 'post_init_hook',
     'post_load': 'post_load',
+    'uninstall_hook': 'uninstall_hook',
 }
