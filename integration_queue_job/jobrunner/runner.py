@@ -124,16 +124,11 @@ def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
         try:
             with closing(conn.cursor()) as cr:
                 cr.execute(
-                    """
-                    UPDATE queue_job
-                    SET state=%s,
-                    date_enqueued=NULL,
-                    date_started=NULL,
-                    eta=(now() at time zone 'utc') + (%s || ' seconds')::interval
-                    WHERE uuid=%s
-                    AND state=%s
-                    RETURNING uuid
-                    """,
+                    "UPDATE queue_job SET state=%s, "
+                    "date_enqueued=NULL, date_started=NULL, "
+                    "eta=(now() at time zone 'utc') + (%s * interval '1 second') "
+                    "WHERE uuid=%s and state=%s "
+                    "RETURNING uuid",
                     (PENDING, delay, job_uuid, ENQUEUED),
                 )
                 if cr.fetchone():
@@ -144,6 +139,18 @@ def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
                         PENDING,
                         delay,
                     )
+                else:
+                    _logger.warning(
+                        "job %s was not moved to pending with eta; current state is not %s",
+                        job_uuid,
+                        ENQUEUED,
+                    )
+        except Exception:
+            _logger.exception(
+                "failed to postpone job %s after HTTP 429; fallback to plain pending",
+                job_uuid,
+            )
+            set_job_pending()
         finally:
             conn.close()
 
@@ -170,7 +177,10 @@ def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
             response = err.response
             if response is not None and response.status_code == 429:
                 retry_after = response.headers.get("Retry-After")
-                delay = int(retry_after) if retry_after and retry_after.isdigit() else 60
+                delay = 60
+                if retry_after and retry_after.isdigit():
+                    delay = int(retry_after)
+                delay = min(max(delay, 1), 600)
 
                 _logger.warning(
                     "rate limited while asking Odoo to run job %s on db %s; "
