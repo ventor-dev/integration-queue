@@ -15,6 +15,8 @@ from odoo import SUPERUSER_ID, _, api, http
 from odoo.modules.registry import Registry
 from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY
 
+from ..capture import capture_output
+from ..jobrunner import queue_job_config
 from ..delay import chain, group
 from ..exception import FailedJobError, RetryableJobError
 from ..job import ENQUEUED, Job
@@ -27,6 +29,27 @@ DEPENDS_MAX_TRIES_ON_CONCURRENCY_FAILURE = 5
 
 
 class RunJobController(http.Controller):
+
+    def _perform_job(self, job):
+        """Run job.perform(), optionally capturing stdout/stderr/logging.
+
+        On success or failure, captured output is kept on ``job.log_text`` in
+        memory only. The caller must persist it:
+
+        * success: ``_try_perform_job`` commits via the current cursor;
+        * failure: ``_persist_failed_job`` (or ``retry_postpone``) after
+          rollback, using a new cursor — same pattern as ``exc_info``.
+        """
+        if not queue_job_config["capture_output"]:
+            job.perform()
+            return
+
+        with capture_output() as buf:
+            try:
+                job.perform()
+            finally:
+                job.log_text = buf.getvalue()
+
     def _try_perform_job(self, env, job):
         """Try to perform the job."""
         job.set_started()
@@ -34,7 +57,8 @@ class RunJobController(http.Controller):
         env.cr.commit()
         _logger.debug("%s started", job)
 
-        job.perform()
+        self._perform_job(job)
+
         # Triggers any stored computed fields before calling 'set_done'
         # so that will be part of the 'exec_time'
         env.flush_all()
@@ -43,6 +67,19 @@ class RunJobController(http.Controller):
         env.flush_all()
         env.cr.commit()
         _logger.debug("%s done", job)
+
+    def _persist_failed_job(self, job, traceback_txt, orig_exception):
+        """Persist failure state on a new cursor after the main one rolled back.
+
+        ``job.log_text`` must already be set by ``_perform_job`` (``finally``)
+        before the exception escaped ``_try_perform_job``. This method writes
+        it together with ``exc_info`` / ``exc_name`` / ``exc_message``.
+        """
+        job.env.clear()
+        with Registry(job.env.cr.dbname).cursor() as new_cr:
+            job.env = api.Environment(new_cr, SUPERUSER_ID, {})
+            job.set_failed(**self._get_failure_values(job, traceback_txt, orig_exception))
+            job.store()
 
     def _enqueue_dependent_jobs(self, env, job):
         tries = 0
@@ -90,6 +127,7 @@ class RunJobController(http.Controller):
                 job.env = api.Environment(new_cr, SUPERUSER_ID, {})
                 job.postpone(result=message, seconds=seconds)
                 job.set_pending(reset_retry=False)
+                # Persists job.log_text too if capture ran before RetryableJobError.
                 job.store()
 
         # ensure the job to run is in the correct state and lock the record
@@ -144,13 +182,8 @@ class RunJobController(http.Controller):
             traceback_txt = buff.getvalue()
             _logger.error(traceback_txt)
 
-            job.env.clear()
-            with Registry(job.env.cr.dbname).cursor() as new_cr:
-                job.env = job.env(cr=new_cr)
-                vals = self._get_failure_values(job, traceback_txt, orig_exception)
-                job.set_failed(**vals)
-                job.store()
-                buff.close()
+            self._persist_failed_job(job, traceback_txt, orig_exception)
+            buff.close()
             raise
 
         _logger.debug("%s enqueue depends started", job)
