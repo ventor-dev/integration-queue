@@ -27,6 +27,7 @@ Built on top of Job Queue module from OCA (https://github.com/OCA/queue).
         'wizards/queue_jobs_to_done_views.xml',
         'wizards/queue_jobs_to_cancelled_views.xml',
         'wizards/queue_requeue_job_views.xml',
+        'wizards/queue_job_log_wizard_views.xml',
         'data/queue_data.xml',
     ],
     'installable': True,

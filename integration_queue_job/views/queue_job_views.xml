@@ -31,6 +31,14 @@
                         groups="integration_queue_job.group_queue_job_manager"
                     />
                     <button name="open_related_action" string="Related" type="object" />
+                    <button
+                        name="action_open_captured_log"
+                        type="object"
+                        string="View Captured Log"
+                        invisible="not log_text"
+                        class="btn-outline-secondary"
+                        icon="fa-file-text-o"
+                    />
                     <field
                         name="state"
                         widget="statusbar"
@@ -39,6 +47,7 @@
                     />
                 </header>
                 <sheet>
+                    <field name="log_text" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button
                             name="open_graph_jobs"
@@ -120,13 +129,6 @@
                                 </div>
                                 <field colspan="4" nolabel="1" name="exc_info" />
                             </group>
-                        </page>
-                        <page
-                            name="captured_log"
-                            string="Captured Log"
-                            invisible="log_text == False"
-                        >
-                            <field nolabel="1" name="log_text" widget="text" />
                         </page>
                     </notebook>
                 </sheet>

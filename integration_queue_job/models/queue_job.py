@@ -283,6 +283,11 @@ class QueueJob(models.Model):
             )
         return result
 
+    def action_open_captured_log(self):
+        """Open captured stdout/stderr/logger output in a popup wizard."""
+        self.ensure_one()
+        return self.env['queue.job.log.wizard'].create_and_run(self.id)
+
     def open_related_action(self):
         """Open the related action associated to the job"""
         self.ensure_one()

@@ -10,3 +10,4 @@ from . import test_wizards
 from . import test_job_log_text
 from . import test_config
 from . import test_capture_controller
+from . import test_format_captured_log
