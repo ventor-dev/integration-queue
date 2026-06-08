@@ -22,7 +22,7 @@ _LOG_LEVEL_COLORS = {
     'CRITICAL': '#b02a37',
 }
 
-_LOG_TIMESTAMP_COLOR = '#6c757d'
+_LOG_TIMESTAMP_COLOR = '#7c3aed'
 _LOG_LOGGER_COLOR = '#0d6efd'
 
 
@@ -73,10 +73,6 @@ class QueueJobLogWizard(models.TransientModel):
             'target': 'new',
         }
 
-    def prepare_log_filename(self) -> str:
-        self.ensure_one()
-        return f'job-log-{self.job_id.uuid}.json'
-
     def prepare_log_content(self) -> str:
         self.ensure_one()
 
@@ -100,7 +96,7 @@ class QueueJobLogWizard(models.TransientModel):
             'date_enqueued': fields.Datetime.to_string(job.date_enqueued),
             'date_done': fields.Datetime.to_string(job.date_done),
             'log_text': job.log_text,
-        })
+        }, indent=4)
 
     @staticmethod
     def _format_captured_log_as_html(text: str) -> str:

@@ -19,7 +19,6 @@ class QueueJobLogExport(Controller):
         if not wizard.job_id:
             return request.not_found(_('No job linked to this log wizard.'))
 
-        filename = wizard.prepare_log_filename()
         content = wizard.prepare_log_content()
 
         return request.make_response(
@@ -27,7 +26,7 @@ class QueueJobLogExport(Controller):
             headers=[
                 ('Content-Type', 'application/json'),
                 ('Content-Length', str(len(content))),
-                ('Content-Disposition', content_disposition(filename)),
+                ('Content-Disposition', content_disposition(f'job-log-{wizard.job_id.id}.json')),
             ]
         )
 

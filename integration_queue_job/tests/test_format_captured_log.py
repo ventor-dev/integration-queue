@@ -1,13 +1,11 @@
 # Copyright 2025 VentorTech
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl.html)
 
-from odoo.tests import tagged
-
-from odoo.addons.integration_queue_job.tests.common import QueueJobCommon
+from odoo.tests import common, tagged
 
 
 @tagged('post_install', '-at_install')
-class TestFormatCapturedLog(QueueJobCommon):
+class TestFormatCapturedLog(common.TransactionCase):
 
     def test_empty_log(self):
         html = self.env['queue.job.log.wizard']._format_captured_log_as_html('')

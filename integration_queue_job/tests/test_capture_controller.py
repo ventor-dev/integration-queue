@@ -15,6 +15,32 @@ _logger = logging.getLogger(__name__)
 
 
 @contextmanager
+def _allow_job_runner_cursor(env):
+    """No-op commit/rollback on the test cursor (production runjob uses its own)."""
+    with mock.patch.object(env.cr, "commit"), mock.patch.object(env.cr, "rollback"):
+        yield
+
+
+@contextmanager
+def _registry_cursor_on_env(env):
+    """Make Registry().cursor() use the test env cursor (savepoint-visible data)."""
+
+    class _Registry:
+        def __init__(self, dbname):
+            self.dbname = dbname
+
+        @contextmanager
+        def cursor(self):
+            yield env.cr
+
+    with mock.patch(
+        "odoo.addons.integration_queue_job.controllers.main.Registry",
+        _Registry,
+    ):
+        yield
+
+
+@contextmanager
 def _patched_partner_write(env, marker, raise_exc=False):
     """Replace res.partner.write with a wrapper that prints / logs `marker`.
 
@@ -50,14 +76,17 @@ class TestCaptureController(common.TransactionCase):
         delayed = self._delay_a_job()
         job_ = Job.load(self.env, delayed.uuid)
 
-        with _patched_partner_write(self.env, "STDOUT_SUCCESS_MARKER"):
+        with _allow_job_runner_cursor(self.env), _patched_partner_write(
+            self.env, "STDOUT_SUCCESS_MARKER"
+        ):
             self.controller._try_perform_job(self.env, job_)
 
         self.env.flush_all()
-        delayed.invalidate_recordset()
+        db_record = delayed.db_record()
+        db_record.invalidate_recordset()
 
-        self.assertEqual(delayed.state, "done")
-        self.assertIn("STDOUT_SUCCESS_MARKER", delayed.log_text or "")
+        self.assertEqual(db_record.state, "done")
+        self.assertIn("STDOUT_SUCCESS_MARKER", db_record.log_text or "")
 
     def test_failure_path_attaches_log_to_job_for_caller(self):
         """In-memory contract: job.log_text is set before the exception escapes."""
@@ -68,7 +97,7 @@ class TestCaptureController(common.TransactionCase):
             self.env, "STDOUT_BEFORE_BOOM", raise_exc=True
         ):
             with self.assertRaises(ValueError):
-                self.controller._try_perform_job(self.env, job_)
+                self.controller._perform_job(job_)
 
         self.assertIn("STDOUT_BEFORE_BOOM", job_.log_text)
 
@@ -77,35 +106,39 @@ class TestCaptureController(common.TransactionCase):
         delayed = self._delay_a_job()
         job_ = Job.load(self.env, delayed.uuid)
 
-        with _patched_partner_write(
+        with _allow_job_runner_cursor(self.env), _patched_partner_write(
             self.env, "STDOUT_BEFORE_BOOM", raise_exc=True
         ):
             with self.assertRaises(ValueError):
                 self.controller._try_perform_job(self.env, job_)
+            self.env.cr.rollback()
 
-        self.env.cr.rollback()
-        self.controller._persist_failed_job(
-            job_,
-            "(simulated traceback)",
-            ValueError("boom: STDOUT_BEFORE_BOOM"),
-        )
+        with _registry_cursor_on_env(self.env):
+            self.controller._persist_failed_job(
+                job_,
+                "(simulated traceback)",
+                ValueError("boom: STDOUT_BEFORE_BOOM"),
+            )
         self.env.flush_all()
-        delayed.invalidate_recordset()
+        db_record = delayed.db_record()
+        db_record.invalidate_recordset()
 
-        self.assertEqual(delayed.state, "failed")
-        self.assertIn("STDOUT_BEFORE_BOOM", delayed.log_text or "")
-        self.assertIn("(simulated traceback)", delayed.exc_info or "")
+        self.assertEqual(db_record.state, "failed")
+        self.assertIn("STDOUT_BEFORE_BOOM", db_record.log_text or "")
+        self.assertIn("(simulated traceback)", db_record.exc_info or "")
 
     def test_capture_disabled_leaves_log_empty(self):
         delayed = self._delay_a_job()
         job_ = Job.load(self.env, delayed.uuid)
 
-        with mock.patch.dict(queue_job_config, {"capture_output": False}), \
-                _patched_partner_write(self.env, "STDOUT_SHOULD_NOT_BE_CAPTURED"):
+        with _allow_job_runner_cursor(self.env), mock.patch.dict(
+            queue_job_config, {"capture_output": False}
+        ), _patched_partner_write(self.env, "STDOUT_SHOULD_NOT_BE_CAPTURED"):
             self.controller._try_perform_job(self.env, job_)
 
         self.env.flush_all()
-        delayed.invalidate_recordset()
+        db_record = delayed.db_record()
+        db_record.invalidate_recordset()
 
-        self.assertEqual(delayed.state, "done")
-        self.assertFalse(delayed.log_text)
+        self.assertEqual(db_record.state, "done")
+        self.assertFalse(db_record.log_text)
