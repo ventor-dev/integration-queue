@@ -37,9 +37,12 @@ from odoo.tools import config
 from . import queue_job_config
 from .channels import ENQUEUED, NOT_DONE, PENDING, ChannelManager
 
+
 SELECT_TIMEOUT = 60
 ERROR_RECOVERY_DELAY = 5
 PG_ADVISORY_LOCK_ID = 2293787760715711918
+NON_ACTIVE_RUNNERS_DELAY = 20
+PID_EXPIRATION_DELAY = 30
 
 _logger = logging.getLogger(__name__)
 
@@ -229,6 +232,8 @@ class Database:
             self.close()
             raise
 
+        self.allow_main_runner_check = self._is_queue_process_function_registered()
+
     def close(self):
         # pylint: disable=except-pass
         # if close fail for any reason, it's either because it's already closed
@@ -276,6 +281,47 @@ class Database:
                 )
                 return False
             return True
+
+    def _is_queue_process_function_registered(self):
+        with closing(self.conn.cursor()) as cr:
+            cr.execute(
+                "SELECT 1 FROM pg_tables WHERE tablename=%s", ("ir_module_module",)
+            )
+            if not cr.fetchone():
+                _logger.debug("%s doesn't seem to be an odoo db", self.db_name)
+                return False
+
+            cr.execute(
+                "SELECT 1 FROM ir_module_module WHERE name=%s AND state=%s",
+                ("integration_queue_job", "installed"),
+            )
+            if not cr.fetchone():
+                _logger.debug("integration_queue_job is not installed for db %s", self.db_name)
+                return False
+
+            cr.execute(
+                """SELECT COUNT(1)
+                FROM pg_proc
+                JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
+                WHERE pg_proc.proname = %s
+                AND pg_namespace.nspname = %s""",
+                ("register_queue_process_func", "public"),
+            )
+            if cr.fetchone()[0] == 0:
+                _logger.error("register_queue_process_func function is missing in db %s", self.db_name)
+                return False
+
+            return True
+
+    def _check_is_main_runner(self):
+        if not self.allow_main_runner_check:
+            return True
+
+        with closing(self.conn.cursor()) as cr:
+            cr.execute("SELECT register_queue_process_func(%s, %s);", (str(os.getpid()), PID_EXPIRATION_DELAY))
+            if cr.fetchone()[0]:
+                return True
+            return False
 
     def _initialize(self):
         with closing(self.conn.cursor()) as cr:
@@ -334,6 +380,7 @@ class QueueJobRunner:
         self.db_by_name = {}
         self._stop = False
         self._stop_pipe = os.pipe()
+        self._is_main_runner = {}
 
     @classmethod
     def from_environ_or_config(cls):
@@ -400,6 +447,8 @@ class QueueJobRunner:
         for job in self.channel_manager.get_jobs_to_run(now):
             if self._stop:
                 break
+            if not self._is_main_runner.get(job.db_name, True):
+                continue
             _logger.info("asking Odoo to run job %s on db %s", job.uuid, job.db_name)
             self.db_by_name[job.db_name].set_job_enqueued(job.uuid)
             _async_http_get(
@@ -414,6 +463,13 @@ class QueueJobRunner:
 
     def process_notifications(self):
         for db in self.db_by_name.values():
+            if not db._check_is_main_runner():
+                self._is_main_runner[db.db_name] = False
+                if self._stop:
+                    break
+                else:
+                    continue
+            self._is_main_runner[db.db_name] = True
             if not db.conn.notifies:
                 # If there are no activity in the queue_job table it seems that
                 # tcp keepalives are not sent (in that very specific scenario),
@@ -431,6 +487,14 @@ class QueueJobRunner:
                         self.channel_manager.notify(db.db_name, *job_datas)
                     else:
                         self.channel_manager.remove_job(uuid)
+
+        if not self._stop and not any(self._is_main_runner.values()):
+            with select() as sel:
+                sel.register(self._stop_pipe[0], selectors.EVENT_READ)
+                events = sel.select(timeout=NON_ACTIVE_RUNNERS_DELAY)
+                for key, _mask in events:
+                    if key.fileobj == self._stop_pipe[0]:
+                        break
 
     def wait_notification(self):
         for db in self.db_by_name.values():

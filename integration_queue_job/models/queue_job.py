@@ -278,6 +278,13 @@ class QueueJob(models.Model):
             )
         return result
 
+    @api.model
+    def cancel_failed_jobs_by_identity_key(self, identity_key: str):
+        self.search([
+            ("state", "=", "failed"),
+            ("identity_key", "=", identity_key),
+        ]).button_cancelled()
+
     def open_related_action(self):
         """Open the related action associated to the job"""
         self.ensure_one()
@@ -423,37 +430,48 @@ class QueueJob(models.Model):
                                 that are in enqueued state,
                                 0 means that it is not checked
         """
-        self._get_stuck_jobs_to_requeue(
+        stuck_jobs = self._get_stuck_jobs_to_requeue(
             enqueued_delta=enqueued_delta, started_delta=started_delta
-        ).requeue()
+        )
+
+        if stuck_eta_jobs := stuck_jobs.filtered(lambda r: r.eta):
+            now = fields.Datetime.now()
+
+            stuck_eta_jobs \
+                .filtered(lambda r: r.eta < now) \
+                .write({"eta": False})
+
+        stuck_jobs.requeue()
+
         return True
 
     def _get_stuck_jobs_domain(self, queue_dl, started_dl):
         domain = []
         now = fields.Datetime.now()
+
         if queue_dl:
-            queue_dl = now - timedelta(minutes=queue_dl)
-            domain.append(
-                [
-                    "&",
-                    ("date_enqueued", "<=", fields.Datetime.to_string(queue_dl)),
-                    ("state", "=", "enqueued"),
-                ]
-            )
+            domain = Domain.AND([
+                [("state", "=", "enqueued")],
+                [("date_enqueued", "<=", fields.Datetime.to_string(now - timedelta(minutes=queue_dl)))],
+            ])
+
+            domain = Domain.OR([domain, Domain.AND([
+                [("state", "=", "pending")],
+                [("date_created", "<=", fields.Datetime.to_string(now - timedelta(minutes=queue_dl * 2)))],
+                Domain.OR([[("eta", "=", False)], [("eta", "<", fields.Datetime.to_string(now))]]),
+            ])])
+
         if started_dl:
-            started_dl = now - timedelta(minutes=started_dl)
-            domain.append(
-                [
-                    "&",
-                    ("date_started", "<=", fields.Datetime.to_string(started_dl)),
-                    ("state", "=", "started"),
-                ]
-            )
+            domain = Domain.OR([domain, Domain.AND([
+                [("state", "=", "started")],
+                [("date_started", "<=", fields.Datetime.to_string(now - timedelta(minutes=started_dl)))],
+            ])])
+
         if not domain:
             raise exceptions.ValidationError(
                 _("If both parameters are 0, ALL jobs will be requeued!")
             )
-        return Domain.OR(domain)
+        return domain
 
     def _get_stuck_jobs_to_requeue(self, enqueued_delta, started_delta):
         job_model = self.env["queue.job"]
