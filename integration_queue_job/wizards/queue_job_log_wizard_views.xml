@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="queue_job_log_wizard_form" model="ir.ui.view">
+        <field name="name">queue.job.log.wizard.form</field>
+        <field name="model">queue.job.log.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="job_id" invisible="1"/> <!-- Job ID is used for the download button -->
+                <field name="body" nolabel="1" readonly="1"/>
+                <footer>
+                    <button
+                        name="download_log_txt"
+                        string="Download"
+                        type="object"
+                        icon="fa-download"
+                    />
+                    <button
+                        name="action_close"
+                        string="Close"
+                        type="object"
+                        class="oe_highlight"
+                        default_focus="1"
+                    />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

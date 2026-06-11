@@ -3,20 +3,32 @@
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl.html)
 
 import logging
+import os
 from threading import Thread
 import time
 
 from odoo.service import server
-from odoo.tools import config
+from odoo.tools import config as odoo_config
 
 
-# Odoo 19.0 does not process custom config sections, so we read configuration parameters from the
-# main section and save them to a dict that will be passed to the job runner
+def _bool(value, default=True):
+    """Parse a boolean from an environment variable string."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
+# Addon-wide configuration loaded at import time. Runner settings are read
+# from odoo.conf (Odoo 19 main section). Feature flags use environment
+# variables only (no extra odoo.conf keys — Odoo warns on unknown keys).
 queue_job_config = {
-    'channels': config.get('queue_job_channels', 'root:1'),
-    'scheme': config.get('queue_job_scheme', 'http'),
-    'host': config.get('queue_job_host', 'localhost'),
-    'port': config.get('queue_job_port', 8069),
+    "channels": odoo_config.get("queue_job_channels", "root:1"),
+    "scheme": odoo_config.get("queue_job_scheme", "http"),
+    "host": odoo_config.get("queue_job_host", "localhost"),
+    "port": odoo_config.get("queue_job_port", 8069),
+    "capture_output": _bool(os.environ.get("QUEUE_JOB__CAPTURE_OUTPUT")),
 }
 
 
@@ -77,7 +89,7 @@ class WorkerJobRunner(server.Worker):
         _logger.info(
             "Worker (%d) CPU time limit (%s) reached.Stop gracefully and recover",
             self.pid,
-            config["limit_time_cpu"],
+            odoo_config["limit_time_cpu"],
         )
         self._recover = True
         self.runner.stop()
@@ -92,7 +104,7 @@ def _is_runner_enabled():
 
 def _start_runner_thread(server_type):
     global runner_thread
-    if not config["stop_after_init"]:
+    if not odoo_config["stop_after_init"]:
         if _is_runner_enabled():
             _logger.info("starting jobrunner thread (in %s)", server_type)
             runner_thread = QueueJobRunnerThread()
