@@ -269,6 +269,7 @@ class Job:
         job_.graph_uuid = stored.graph_uuid if stored.graph_uuid else None
         job_.result = stored.result if stored.result else None
         job_.exc_info = stored.exc_info if stored.exc_info else None
+        job_.log_text = stored.log_text if stored.log_text else ""
         job_.retry = stored.retry
         job_.max_retries = stored.max_retries
         if stored.company_id:
@@ -469,6 +470,7 @@ class Job:
         self.exc_name = None
         self.exc_message = None
         self.exc_info = None
+        self.log_text = ""
 
         if "company_id" in env.context:
             company_id = env.context["company_id"]
@@ -586,6 +588,7 @@ class Job:
             "exc_info": self.exc_info,
             "company_id": self.company_id,
             "result": str(self.result) if self.result else False,
+            "log_text": self.log_text if self.log_text else False,
             "date_enqueued": False,
             "date_started": False,
             "date_done": False,

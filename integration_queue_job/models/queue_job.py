@@ -94,6 +94,11 @@ class QueueJob(models.Model):
     exc_message = fields.Char(string="Exception Message", readonly=True, tracking=True)
     exc_info = fields.Text(string="Exception Info", readonly=True)
     result = fields.Text(readonly=True)
+    log_text = fields.Text(
+        string="Captured Log",
+        readonly=True,
+        help="Output captured (stdout + stderr + root logger) during job execution.",
+    )
 
     date_created = fields.Datetime(string="Created Date", readonly=True)
     date_started = fields.Datetime(string="Start Date", readonly=True)
@@ -277,6 +282,11 @@ class QueueJob(models.Model):
                 {"records": record.records.with_user(vals["user_id"])}
             )
         return result
+
+    def action_open_captured_log(self):
+        """Open captured stdout/stderr/logger output in a popup wizard."""
+        self.ensure_one()
+        return self.env['queue.job.log.wizard'].create_and_run(self.id)
 
     def open_related_action(self):
         """Open the related action associated to the job"""
