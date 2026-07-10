@@ -40,6 +40,11 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
+* 1.0.7 (2026-07-10)
+    - Removed the deprecated ``Request._get_session_and_dbname`` monkey patch
+      (``post_load`` hook). The ``X-Odoo-Database`` header introduced in 1.0.6
+      fully replaces it.
+
 * 1.0.6 (2026-06-11)
     - Fixed job runner failing with "'NoneType' object is not callable" on
       multi-database instances. The runner now passes the target database in
