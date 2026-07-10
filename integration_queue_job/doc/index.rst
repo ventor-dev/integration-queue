@@ -62,9 +62,24 @@ Release Notes
       *Settings > Technical > Scheduled Actions > Jobs Garbage Collector* and set
       ``started_delta=20`` (or ``0`` to stop requeuing started jobs altogether).
       Fresh installs get the new value automatically.
+    - The ``Jobs Garbage Collector`` cron no longer resets the ``retry`` counter
+      of the jobs it requeues. It runs every 5 minutes, so a job it kept
+      rescuing had its retry budget wiped on every pass and could never reach
+      ``max_retries``. Requeuing by hand, from the job form or the *Requeue Jobs*
+      wizard, still resets ``retry`` as before.
+    - The ``Jobs Garbage Collector`` cron now says what it did: a warning in the
+      log, and a note in each requeued job's chatter explaining which state it
+      was rescued from and after how long. Previously it fixed jobs silently,
+      which made a job sitting in ``enqueued`` look stuck for no reason.
+
+      **This cron must stay enabled.** Since the runner no longer guesses from a
+      request timeout, the cron is now the only mechanism that recovers a job
+      whose dispatch was lost. With ``root:1`` a single unrecovered job blocks
+      the whole queue. Note that Odoo.sh deactivates scheduled actions on
+      staging branches by default.
     - ``queue_job_host`` / ``queue_job_port`` now fall back to Odoo's own
       ``http_interface`` / ``http_port`` when unset, instead of being pinned to
-      ``localhost:8069``.
+      ``localhost:8069``. ``queue_job_port`` is coerced to an integer.
     - Fixed a file descriptor leak: the runner's stop-pipe is closed again.
 
 * 1.0.7 (2026-07-10)

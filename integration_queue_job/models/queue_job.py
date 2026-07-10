@@ -17,6 +17,7 @@ from ..fields import JobSerialized
 from ..job import (
     CANCELLED,
     DONE,
+    ENQUEUED,
     FAILED,
     PENDING,
     STARTED,
@@ -304,7 +305,7 @@ class QueueJob(models.Model):
         )
         return action
 
-    def _change_job_state(self, state, result=None):
+    def _change_job_state(self, state, result=None, reset_retry=True):
         """Change the state of the `Job` object
 
         Changing the state of the Job will automatically change some fields
@@ -318,7 +319,7 @@ class QueueJob(models.Model):
                 record.env["queue.job"].flush_model()
                 job_.enqueue_waiting()
             elif state == PENDING:
-                job_.set_pending(result=result)
+                job_.set_pending(result=result, reset_retry=reset_retry)
                 job_.store()
             elif state == CANCELLED:
                 job_.set_cancelled(result=result)
@@ -338,9 +339,16 @@ class QueueJob(models.Model):
         self._change_job_state(CANCELLED, result=result)
         return True
 
-    def requeue(self):
+    def requeue(self, reset_retry=True):
+        """Send jobs back to 'pending'.
+
+        :param reset_retry: clear the retry counter, as a user asking for a
+            fresh attempt would expect. Automatic requeues must pass False,
+            otherwise a job that keeps being rescued never reaches max_retries
+            and never fails.
+        """
         jobs_to_requeue = self.filtered(lambda job_: job_.state != WAIT_DEPENDENCIES)
-        jobs_to_requeue._change_job_state(PENDING)
+        jobs_to_requeue._change_job_state(PENDING, reset_retry=reset_retry)
         return True
 
     def _message_post_on_failure(self):
@@ -423,10 +431,44 @@ class QueueJob(models.Model):
                                 that are in enqueued state,
                                 0 means that it is not checked
         """
-        self._get_stuck_jobs_to_requeue(
+        stuck_jobs = self._get_stuck_jobs_to_requeue(
             enqueued_delta=enqueued_delta, started_delta=started_delta
-        ).requeue()
+        )
+        # Explain the requeue before it happens, while we can still see which
+        # state the job was rescued from.
+        self._log_stuck_jobs(stuck_jobs, enqueued_delta, started_delta)
+        # Never reset 'retry' here: this cron runs every 5 minutes, and a job it
+        # keeps rescuing would have its retry budget wiped on every pass and so
+        # never reach max_retries.
+        stuck_jobs.requeue(reset_retry=False)
         return True
+
+    def _log_stuck_jobs(self, stuck_jobs, enqueued_delta, started_delta):
+        """Record why each stuck job was requeued, in the log and in its chatter.
+
+        The job runner deliberately draws no conclusion from a request timeout,
+        so a job whose dispatch was lost stays 'enqueued' until this cron
+        rescues it. Without a trace, that reads as a job stuck for no reason.
+        """
+        if not stuck_jobs:
+            return
+
+        delta_by_state = {ENQUEUED: enqueued_delta, STARTED: started_delta}
+        bodies = {}
+        for job in stuck_jobs:
+            bodies[job.id] = _(
+                "Requeued by the Jobs Garbage Collector: the job stayed in "
+                "state '%(state)s' for more than %(delta)s minutes.",
+                state=job.state,
+                delta=delta_by_state.get(job.state),
+            )
+
+        _logger.warning(
+            "Requeuing %s stuck job(s): %s",
+            len(stuck_jobs),
+            ", ".join(stuck_jobs.mapped("uuid")),
+        )
+        stuck_jobs._message_log_batch(bodies=bodies)
 
     def _get_stuck_jobs_domain(self, queue_dl, started_dl):
         domain = []
