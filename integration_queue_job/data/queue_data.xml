@@ -9,8 +9,12 @@
             <field name="state">code</field>
             <field name="code"># Requeue stuck jobs:
 # - enqueued > 5 min
-# - started  > 15 min
-model.requeue_stuck_jobs(enqueued_delta=5, started_delta=15)
+# - started  > 20 min
+#
+# Keep 'started_delta' above the longest a job can still be alive. Odoo.sh caps a
+# request at limit_time_real (900s) but takes up to ~121s more to actually kill the
+# thread, and nothing locks a running job: requeue it too early and it runs twice.
+model.requeue_stuck_jobs(enqueued_delta=5, started_delta=20)
             </field>
         </record>
         <!-- Queue-job-related subtypes for messaging / Chatter -->

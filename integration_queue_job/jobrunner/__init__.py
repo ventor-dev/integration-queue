@@ -11,12 +11,13 @@ from odoo.tools import config
 
 
 # Odoo 19.0 does not process custom config sections, so we read configuration parameters from the
-# main section and save them to a dict that will be passed to the job runner
+# main section and save them to a dict that will be passed to the job runner.
+# Unset keys must map to None rather than to a default: the runner falls back to
+# Odoo's own 'http_interface'/'http_port', and a truthy default here would shadow
+# that fallback and pin the runner to localhost:8069 whatever Odoo is listening on.
 queue_job_config = {
-    'channels': config.get('queue_job_channels', 'root:1'),
-    'scheme': config.get('queue_job_scheme', 'http'),
-    'host': config.get('queue_job_host', 'localhost'),
-    'port': config.get('queue_job_port', 8069),
+    key: config.get(f'queue_job_{key}') or None
+    for key in ('channels', 'scheme', 'host', 'port')
 }
 
 

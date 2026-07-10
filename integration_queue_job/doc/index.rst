@@ -40,6 +40,33 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
+* 1.0.8 (2026-07-10)
+    - Fixed the job runner re-dispatching the same job about once per second
+      until the platform answered HTTP 429. ``/queue_job/runjob`` only responds
+      once the job has finished, so the runner's 1 second timeout means "we are
+      not waiting for the result", not "the request failed". Treating it as a
+      failure reset the job to ``pending``, which notified the runner, which
+      re-dispatched it, and so on. A timeout is now ignored. Jobs whose request
+      really was lost are still recovered by the ``Jobs Garbage Collector`` cron.
+    - The runner no longer resets a job to ``pending`` on arbitrary request
+      exceptions either. It only postpones on HTTP 429, with the ``Retry-After``
+      backoff introduced in 1.0.5.
+    - Raised the ``Jobs Garbage Collector`` cron's ``started_delta`` from 15 to
+      20 minutes. Odoo caps a request at ``limit_time_real`` (900s on Odoo.sh)
+      but takes up to ~121s more to actually kill the thread, so a job could be
+      requeued while it was still running and, since nothing locks a running job,
+      executed a second time in parallel.
+
+      **Action required on existing databases.** The cron is declared with
+      ``noupdate="1"``, so upgrading the module does not change it. Open
+      *Settings > Technical > Scheduled Actions > Jobs Garbage Collector* and set
+      ``started_delta=20`` (or ``0`` to stop requeuing started jobs altogether).
+      Fresh installs get the new value automatically.
+    - ``queue_job_host`` / ``queue_job_port`` now fall back to Odoo's own
+      ``http_interface`` / ``http_port`` when unset, instead of being pinned to
+      ``localhost:8069``.
+    - Fixed a file descriptor leak: the runner's stop-pipe is closed again.
+
 * 1.0.7 (2026-07-10)
     - Removed the deprecated ``Request._get_session_and_dbname`` monkey patch
       (``post_load`` hook). The ``X-Odoo-Database`` header introduced in 1.0.6
