@@ -92,8 +92,8 @@ def _connection_info_for(db_name):
 
 
 def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
-    # Method to set failed job (due to timeout, etc) as pending,
-    # to avoid keeping it as enqueued.
+    # Fallback used only when postponing a rate-limited job fails; see
+    # set_job_pending_with_eta().
     def set_job_pending():
         connection_info = _connection_info_for(db_name)
         conn = psycopg2.connect(**connection_info)
@@ -174,7 +174,13 @@ def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
             # for codes between 500 and 600
             response.raise_for_status()
         except requests.Timeout:
-            set_job_pending()
+            # '/queue_job/runjob' only answers once the job is done, so the 1s
+            # timeout means "not waiting for the result", not "the request
+            # failed". Resetting the job here re-notifies the runner, which
+            # re-dispatches and times out again: a 1 req/s storm until the
+            # platform answers 429. Genuinely lost requests are recovered by
+            # the 'Jobs Garbage Collector' cron.
+            pass
         except requests.exceptions.HTTPError as err:
             response = err.response
             if response is not None and response.status_code == 429:
@@ -195,10 +201,8 @@ def _async_http_get(scheme, host, port, user, password, db_name, job_uuid):
                 return
 
             _logger.exception("exception in GET %s", url)
-            set_job_pending()
         except Exception:
             _logger.exception("exception in GET %s", url)
-            set_job_pending()
 
     thread = threading.Thread(target=urlopen)
     thread.daemon = True
@@ -326,6 +330,19 @@ class QueueJobRunner:
         self._stop = False
         self._stop_pipe = os.pipe()
 
+    def __del__(self):
+        # pylint: disable=except-pass
+        # The runner is re-created on every 'limit_time_cpu' recovery and on
+        # every process reload, so leaking the stop-pipe fds adds up.
+        try:
+            os.close(self._stop_pipe[0])
+        except OSError:
+            pass
+        try:
+            os.close(self._stop_pipe[1])
+        except OSError:
+            pass
+
     @classmethod
     def from_environ_or_config(cls):
         scheme = os.environ.get("ODOO_QUEUE_JOB_SCHEME") or queue_job_config.get(
@@ -350,7 +367,9 @@ class QueueJobRunner:
         runner = cls(
             scheme=scheme or "http",
             host=host or "localhost",
-            port=port or 8069,
+            # 'queue_job_port' is not a known Odoo option, so it reaches us as a
+            # string when set in the config file.
+            port=int(port or 8069),
             user=user,
             password=password,
         )
