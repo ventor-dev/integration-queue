@@ -40,6 +40,36 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
+* 1.0.9 (2026-07-14)
+    - The job runner now reads its settings from a ``[queue_job]`` section of
+      ``odoo.conf``. Odoo only parses the ``[options]`` section and logs a
+      warning for every key it does not recognise, so the ``queue_job_*`` keys
+      cost four warnings on every process start -- on one production instance,
+      132 log lines a day. It never enumerates the other sections, so a section
+      of our own is silent. It is also the layout OCA's ``queue_job``
+      documentation assumes, and the only one that can carry the
+      ``jobrunner_db_*`` and ``http_auth_*`` settings: ``runner.py`` reads them,
+      but they were unreachable from a flat key and always resolved to ``None``.
+
+      .. code:: ini
+
+         [options]
+         server_wide_modules = base,web,integration_queue_job,...
+
+         ; Keep this section at the end of the file: in an .ini file every key
+         ; below a section header belongs to that section.
+         [queue_job]
+         channels = root:1
+         scheme = https
+         host = mycompany.odoo.com
+         port = 443
+
+      **No action required.** The old ``queue_job_*`` keys under ``[options]``
+      still work, so an existing ``odoo.conf`` keeps its current behaviour --
+      upgrading will not silently repoint a live runner. While they are in use,
+      the runner logs one warning naming them, with the section to copy in their
+      place. Where both define the same key, the section wins.
+
 * 1.0.8 (2026-07-14)
     - Fixed the job runner re-dispatching the same job about once per second
       until the platform answered HTTP 429. ``/queue_job/runjob`` only responds
