@@ -40,7 +40,7 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
-* 1.0.8 (2026-07-10)
+* 1.0.8 (2026-07-14)
     - Fixed the job runner re-dispatching the same job about once per second
       until the platform answered HTTP 429. ``/queue_job/runjob`` only responds
       once the job has finished, so the runner's 1 second timeout means "we are
