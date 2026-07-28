@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from odoo import fields
 from odoo.tests import common
-from odoo.tools import config
+from odoo.tools import config, mute_logger
 
 
 class TestRequeueStuckJobs(common.TransactionCase):
@@ -43,8 +43,14 @@ class TestRequeueStuckJobs(common.TransactionCase):
             _job_edit_sentinel=self.job_model.EDIT_SENTINEL
         ).create(vals)
 
+    @mute_logger('odoo.addons.integration_queue_job.models.queue_job')
     def _collect(self, enqueued_delta=5, started_delta=20):
-        """Run the cron exactly as ``data/queue_data.xml`` does."""
+        """Run the cron exactly as ``data/queue_data.xml`` does.
+
+        Muted: every test in this class deliberately puts a job in a state the
+        GC is meant to warn about (that's the behavior under test), so the
+        "stuck job(s)" / "Giving up on job" warnings are expected noise here.
+        """
         self.job_model.requeue_stuck_jobs(
             enqueued_delta=enqueued_delta, started_delta=started_delta
         )
