@@ -259,15 +259,15 @@ class QueueJobFunction(models.Model):
                 new_vals_list.append(vals)
             vals_list = new_vals_list
         records |= super().create(vals_list)
-        self.env.registry.clear_cache()
+        self.env.transaction.invalidate_ormcache('default')
         return records
 
     def write(self, values):
         res = super().write(values)
-        self.env.registry.clear_cache()
+        self.env.transaction.invalidate_ormcache('default')
         return res
 
     def unlink(self):
         res = super().unlink()
-        self.env.registry.clear_cache()
+        self.env.transaction.invalidate_ormcache('default')
         return res

@@ -13,13 +13,18 @@ from werkzeug.exceptions import BadRequest, Forbidden
 
 from odoo import SUPERUSER_ID, _, api, http
 from odoo.modules.registry import Registry
-from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY
 
 from ..delay import chain, group
 from ..exception import FailedJobError, RetryableJobError
 from ..job import ENQUEUED, Job
 
 _logger = logging.getLogger(__name__)
+
+PG_CONCURRENCY_ERRORS_TO_RETRY = (
+    errorcodes.LOCK_NOT_AVAILABLE,
+    errorcodes.SERIALIZATION_FAILURE,
+    errorcodes.DEADLOCK_DETECTED,
+)
 
 PG_RETRY = 5  # seconds
 

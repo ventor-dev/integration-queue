@@ -5,16 +5,18 @@
 # connector code importing from integration_queue_job.job continues to work
 # without modification after the module is renamed.
 from odoo.addons.queue_job.job import (  # noqa: F401
-    Job,
-    identity_exact,
     CANCELLED,
     DEFAULT_MAX_RETRIES,
     DEFAULT_PRIORITY,
     DONE,
     ENQUEUED,
     FAILED,
+    Job,
     PENDING,
     RETRY_INTERVAL,
     STARTED,
+    STATES,
     WAIT_DEPENDENCIES,
+    identity_exact,
+    identity_exact_hasher,
 )
