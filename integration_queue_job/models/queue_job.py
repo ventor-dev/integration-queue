@@ -162,12 +162,10 @@ class QueueJob(models.Model):
                     [uuid for uuid in self.mapped("graph_uuid") if uuid],
                 )
             ],
-            ["graph_uuid", "ids:array_agg(id)"],
             ["graph_uuid"],
+            ["id:array_agg"],
         )
-        ids_per_graph_uuid = {
-            group["graph_uuid"]: group["ids"] for group in jobs_groups
-        }
+        ids_per_graph_uuid = dict(jobs_groups)
         for record in self:
             if not record.graph_uuid:
                 record.dependency_graph = {}
@@ -234,11 +232,9 @@ class QueueJob(models.Model):
                 )
             ],
             ["graph_uuid"],
-            ["graph_uuid"],
+            ["__count"],
         )
-        count_per_graph_uuid = {
-            group["graph_uuid"]: group["graph_uuid_count"] for group in jobs_groups
-        }
+        count_per_graph_uuid = dict(jobs_groups)
         for record in self:
             record.graph_jobs_count = count_per_graph_uuid.get(record.graph_uuid) or 0
 

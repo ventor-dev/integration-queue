@@ -264,7 +264,9 @@ class Base(models.AbstractModel):
     def _patch_method(cls, name, method):
         origin = getattr(cls, name)
         method.origin = origin
-        # propagate decorators from origin to method, and apply api decorator
-        wrapped = api.propagate(origin, method)
+        # api.propagate was removed in 20.0 along with the `_returns` marker
+        # it used to copy; functools.update_wrapper keeps the wrapper looking
+        # like origin (name, doc, __wrapped__) for introspection instead.
+        wrapped = functools.update_wrapper(method, origin)
         wrapped.origin = origin
         setattr(cls, name, wrapped)
