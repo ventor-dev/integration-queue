@@ -2,7 +2,7 @@
 
 This repository provides background job processing support for
 [VentorTech e-commerce connectors](https://ecosystem.ventor.tech) (WooCommerce,
-PrestaShop, Magento 2, Shopify) on Odoo 19.0.
+PrestaShop, Magento 2, Shopify) on Odoo 20.0.
 
 It contains **two modules** with different purposes:
 
@@ -52,7 +52,7 @@ fork.  No uninstallation is required.
 
 **Prerequisites**
 
-- OCA's `queue_job` module (Odoo 19.0 branch) available in your add-on path.
+- OCA's `queue_job` module (Odoo 20.0 branch) available in your add-on path.
   Repository: https://github.com/OCA/queue
 
 **Steps**

@@ -9,7 +9,7 @@
     'summary': '''Compatibility bridge that allows VentorTech integration connectors
 to work with OCA\'s Job Queue module instead of the built-in integration_queue_job fork.
 ''',
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
     'author': 'VentorTech',
     'website': 'https://github.com/ventor-dev/integration-queue',
     'license': 'LGPL-3',

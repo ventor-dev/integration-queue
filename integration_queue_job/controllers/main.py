@@ -13,13 +13,18 @@ from werkzeug.exceptions import BadRequest, Forbidden
 
 from odoo import SUPERUSER_ID, _, api, http
 from odoo.modules.registry import Registry
-from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY
 
 from ..delay import chain, group
 from ..exception import FailedJobError, RetryableJobError
 from ..job import ENQUEUED, Job
 
 _logger = logging.getLogger(__name__)
+
+PG_CONCURRENCY_ERRORS_TO_RETRY = (
+    errorcodes.LOCK_NOT_AVAILABLE,
+    errorcodes.SERIALIZATION_FAILURE,
+    errorcodes.DEADLOCK_DETECTED,
+)
 
 PG_RETRY = 5  # seconds
 
@@ -84,7 +89,7 @@ class RunJobController(http.Controller):
         env = http.request.env(user=SUPERUSER_ID)
 
         def retry_postpone(job, message, seconds=None):
-            job.env.clear()
+            job.env.transaction.clear()
             with Registry(job.env.cr.dbname).cursor() as new_cr:
                 job.env = api.Environment(new_cr, SUPERUSER_ID, {})
                 job.postpone(result=message, seconds=seconds)
@@ -143,7 +148,7 @@ class RunJobController(http.Controller):
             traceback_txt = buff.getvalue()
             _logger.error(traceback_txt)
 
-            job.env.clear()
+            job.env.transaction.clear()
             with Registry(job.env.cr.dbname).cursor() as new_cr:
                 job.env = job.env(cr=new_cr)
                 vals = self._get_failure_values(job, traceback_txt, orig_exception)
