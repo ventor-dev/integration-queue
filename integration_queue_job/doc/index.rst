@@ -40,6 +40,12 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
+* 1.0.11 (2026-09-29)
+    - Fixed the "Graph Jobs" button on the job form showing a stray dash
+      instead of its icon on Odoo 20, which no longer ships Font Awesome.
+    - Fixed the "Remaining days to execute" column of the jobs list showing a
+      plain date on Odoo 20, which removed the widget it used.
+
 * 1.0.9 (2026-07-14)
     - The job runner now reads its settings from a ``[queue_job]`` section of
       ``odoo.conf``. Odoo only parses the ``[options]`` section and logs a
