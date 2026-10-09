@@ -81,7 +81,11 @@ class RunJobController(http.Controller):
         readonly=False,
     )
     def runjob(self, job_uuid, **kw):
-        env = http.request.env(user=SUPERUSER_ID)
+        # auth="none" pins transaction.default_env to a uid=None env; every
+        # mid-job flush (savepoint, commit) recomputes stored fields through
+        # it. update_env() repoints it to superuser (OCA/queue#922).
+        http.request.update_env(user=SUPERUSER_ID)
+        env = http.request.env
 
         def retry_postpone(job, message, seconds=None):
             job.env.clear()
