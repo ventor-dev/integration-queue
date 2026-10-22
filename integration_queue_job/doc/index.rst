@@ -40,6 +40,12 @@ You can postpone method calls to be executed asynchronously:
 
 Release Notes
 -------------
+* 1.0.12 (2026-10-22)
+    - Fixed jobs recomputing stored fields with an empty user and no company
+      on mid-job commits: ``/queue_job/runjob`` now switches the whole request
+      environment to the superuser. Port of
+      `OCA/queue#923 <https://github.com/OCA/queue/pull/923>`_.
+
 * 1.0.11 (2026-09-29)
     - Fixed the "Graph Jobs" button on the job form showing a stray dash
       instead of its icon on Odoo 20, which no longer ships Font Awesome.
